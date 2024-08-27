@@ -16,30 +16,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Include the Composer autoload file
 #require_once __DIR__ . '/vendor/autoload.php';
 
-// Git Updater requires the plugin headers to be correctly formatted.
-// Initialize Git Updater if necessary (optional; Git Updater generally works automatically with the correct headers).
-
-// Custom error handler
-function itwp_custom_error_handler($errno, $errstr, $errfile, $errline) {
-	// Only handle the error if it is not suppressed by @
-	if (!(error_reporting() & $errno)) {
-		return;
-	}
-
-	// Display the error message
-	echo "<div class='notice notice-error'><p><strong>Error:</strong> [$errno] $errstr in $errfile on line $errline</p></div>";
-
-	// Prevent WordPress from sending an email notification
-	if (defined('DOING_AJAX') && DOING_AJAX) {
-		wp_die(); // Stop execution for AJAX requests
-	} else {
-		die(); // Stop execution for non-AJAX requests
-	}
-}
-
-// Register the custom error handler
-set_error_handler('itwp_custom_error_handler');
-
 // Register custom post type for Instagram posts
 function itwp_register_instagram_post_type() {
 	$labels = array(
