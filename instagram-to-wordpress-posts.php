@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.4
+ * Version: 1.4.1
  * Author: Sven Grün
  * GitHub Plugin URI: https://github.com/smpx7/instagram-to-wordpress-posts
  * GitHub Branch: main
@@ -63,7 +63,6 @@ function itwp_fetch_and_store_instagram_posts() {
 	$access_token = get_option( 'itwp_access_token', '' );
 
 	if ( empty( $access_token ) ) {
-		// Display error message if access token is missing
 		add_action('admin_notices', function() {
 			echo '<div class="notice notice-error is-dismissible"><p>Instagram Access Token is missing. Please configure it in the settings page.</p></div>';
 		});
@@ -106,16 +105,24 @@ function itwp_fetch_and_store_instagram_posts() {
 				continue;
 			}
 
-			// Prepare post content
-			$post_content = '';
+			// Download the image to the WordPress media library
 			if ( $post['media_type'] == 'IMAGE' || $post['media_type'] == 'CAROUSEL_ALBUM' ) {
-				$post_content = '<img src="' . esc_url( $post['media_url'] ) . '" alt="' . esc_attr( $post['caption'] ) . '" />';
+				$media_url = $post['media_url'];
+				$media_id = itwp_save_image_to_media_library( $media_url, $post_id );
+
+				if ( is_wp_error( $media_id ) ) {
+					continue; // Skip this post if the image couldn't be saved
+				}
+
+				// Use the local image URL in the post content
+				$image_url = wp_get_attachment_url( $media_id );
+				$post_content = '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $post['caption'] ) . '" />';
 			} elseif ( $post['media_type'] == 'VIDEO' ) {
 				$post_content = '<video controls src="' . esc_url( $post['media_url'] ) . '"></video>';
 			}
 
+			// Append caption to the post content
 			$post_content .= '<p>' . esc_html( $post['caption'] ) . '</p>';
-			$post_content .= '<a href="' . esc_url( $post['permalink'] ) . '" target="_blank">View on Instagram</a>';
 
 			// Insert post into database
 			$new_post = array(
@@ -135,6 +142,56 @@ function itwp_fetch_and_store_instagram_posts() {
 	}
 }
 add_action( 'itwp_daily_instagram_fetch', 'itwp_fetch_and_store_instagram_posts' );
+
+// Function to save Instagram images to the media library
+function itwp_save_image_to_media_library( $image_url, $post_id ) {
+	// Define upload directory and folder
+	$upload_dir = wp_upload_dir();
+	$upload_path = $upload_dir['basedir'] . '/instagram-images/';
+
+	// Create the directory if it doesn't exist
+	if ( ! file_exists( $upload_path ) ) {
+		wp_mkdir_p( $upload_path );
+	}
+
+	// Get the file name and path
+	$filename = basename( $image_url );
+	$file_path = $upload_path . $filename;
+
+	// Download the image
+	$image_data = wp_remote_get( $image_url );
+
+	if ( is_wp_error( $image_data ) ) {
+		return $image_data;
+	}
+
+	$image_data = wp_remote_retrieve_body( $image_data );
+
+	if ( empty( $image_data ) ) {
+		return new WP_Error( 'image_download_error', 'Failed to download image from Instagram.' );
+	}
+
+	// Save the image to the media library
+	file_put_contents( $file_path, $image_data );
+
+	// Prepare the image for WordPress media library
+	$wp_filetype = wp_check_filetype( $filename, null );
+	$attachment = array(
+		'post_mime_type' => $wp_filetype['type'],
+		'post_title'     => sanitize_file_name( $filename ),
+		'post_content'   => '',
+		'post_status'    => 'inherit'
+	);
+
+	// Insert the attachment into the media library
+	$attach_id = wp_insert_attachment( $attachment, $file_path );
+
+	require_once( ABSPATH . 'wp-admin/includes/image.php' );
+	$attach_data = wp_generate_attachment_metadata( $attach_id, $file_path );
+	wp_update_attachment_metadata( $attach_id, $attach_data );
+
+	return $attach_id;
+}
 
 // Shortcode to display Instagram posts from the database with a specified template
 function itwp_display_instagram_posts( $atts ) {
