@@ -189,8 +189,8 @@ function itwp_options_page() {
 }
 
 // GitHub Updater Class
-if ( is_admin() ) {
-	$plugin_basename = plugin_basename( __FILE__ );
-	require_once plugin_dir_path( __FILE__ ) . 'github-updater.php';
-	new GitHubUpdater( __FILE__, 'smpx7', 'instagram-to-wordpress-posts', 'main' );
-}
+#if ( is_admin() ) {
+#	$plugin_basename = plugin_basename( __FILE__ );
+#	require_once plugin_dir_path( __FILE__ ) . 'github-updater.php';
+#	new GitHubUpdater( __FILE__, 'smpx7', 'instagram-to-wordpress-posts', 'main' );
+#}
