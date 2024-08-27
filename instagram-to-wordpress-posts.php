@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.5.1
+ * Version: 1.6
  * Author: Sven Grün
  * Text Domain: instagram-to-wordpress-posts
  * Domain Path: /languages
@@ -49,7 +49,7 @@ function itwp_register_instagram_post_type() {
 		'rewrite'            => array( 'slug' => 'instagram-post' ),
 		'capability_type'    => 'post',
 		'has_archive'        => true,
-		'hierarchical'       => false,
+		'hierarchical'       => false, // Flat structure suitable for Instagram posts
 		'menu_position'      => null,
 		'supports'           => array( 'title', 'editor', 'thumbnail' ),
 	);
@@ -87,131 +87,162 @@ function itwp_fetch_and_store_instagram_posts() {
 
 	$api_url = 'https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=' . $fetch_limit . '&access_token=' . esc_attr( $access_token );
 
-	while ( $api_url ) {
-		$response = wp_remote_get( $api_url );
+	// Fetch the latest posts in reverse chronological order
+	$response = wp_remote_get( $api_url );
 
-		if ( is_wp_error( $response ) ) {
-			add_action('admin_notices', function() {
-				echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Failed to retrieve Instagram posts.', 'instagram-to-wordpress-posts' ) . '</p></div>';
-			});
-			return;
-		}
+	if ( is_wp_error( $response ) ) {
+		add_action('admin_notices', function() {
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Failed to retrieve Instagram posts.', 'instagram-to-wordpress-posts' ) . '</p></div>';
+		});
+		return;
+	}
 
-		$body = wp_remote_retrieve_body( $response );
-		$data = json_decode( $body, true );
+	$body = wp_remote_retrieve_body( $response );
+	$data = json_decode( $body, true );
 
-		if ( isset( $data['error'] ) ) {
-			add_action('admin_notices', function() use ($data) {
-				echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Instagram API Error: ', 'instagram-to-wordpress-posts' ) . esc_html($data['error']['message']) . '</p></div>';
-			});
-			return;
-		}
+	if ( isset( $data['error'] ) ) {
+		add_action('admin_notices', function() use ($data) {
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Instagram API Error: ', 'instagram-to-wordpress-posts' ) . esc_html($data['error']['message']) . '</p></div>';
+		});
+		return;
+	}
 
-		if ( ! empty( $data['data'] ) ) {
-			foreach ( $data['data'] as $post ) {
-				$post_id = $post['id'];
+	if ( ! empty( $data['data'] ) ) {
+		foreach ( $data['data'] as $post ) {
+			$post_id = $post['id'];
 
-				// Check if post already exists
-				$existing_post = get_posts( array(
-					'post_type' => 'instagram_post',
-					'meta_key' => 'instagram_post_id',
-					'meta_value' => $post_id,
-					'posts_per_page' => 1,
+			// Check if post already exists
+			$existing_post = get_posts( array(
+				'post_type' => 'instagram_post',
+				'meta_key' => 'instagram_post_id',
+				'meta_value' => $post_id,
+				'posts_per_page' => 1,
+			) );
+
+			if ( ! empty( $existing_post ) ) {
+				continue;
+			}
+
+			// Download the image to the WordPress media library
+			$media_id = null;
+			if ( $post['media_type'] == 'IMAGE' || $post['media_type'] == 'CAROUSEL_ALBUM' ) {
+				$media_url = $post['media_url'];
+				$media_id = itwp_save_image_to_media_library( $media_url, $post_id, 'image/jpeg' );
+
+				if ( is_wp_error( $media_id ) ) {
+					continue; // Skip this post if the image couldn't be saved
+				}
+
+				// Use the local image URL in the post content
+				$image_url = wp_get_attachment_url( $media_id );
+				$post_content = '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $post['caption'] ) . '" />';
+			} elseif ( $post['media_type'] == 'VIDEO' ) {
+				$media_url = $post['media_url'];
+				$media_id = itwp_save_image_to_media_library( $media_url, $post_id, 'video/mp4' );
+
+				if ( is_wp_error( $media_id ) ) {
+					continue; // Skip this post if the video couldn't be saved
+				}
+
+				// Use the local video URL in the post content
+				$video_url = wp_get_attachment_url( $media_id );
+				$post_content = '<video controls src="' . esc_url( $video_url ) . '"></video>';
+			}
+
+			// Append caption to the post content
+			$post_content .= '<p>' . esc_html( $post['caption'] ) . '</p>';
+
+			// Convert Instagram timestamp to WordPress date format
+			$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post['timestamp'] ) );
+			$post_date = get_date_from_gmt( $post_date_gmt );
+
+			// Format the post title using the selected date format
+			$formatted_date = date( $date_format, strtotime( $post_date ) );
+			$post_title = 'post ' . $formatted_date;
+
+			// Insert post into database with Instagram post date
+			$new_post = array(
+				'post_title'   => $post_title,
+				'post_content' => $post_content,
+				'post_status'  => 'publish',
+				'post_type'    => 'instagram_post',
+				'post_date'    => $post_date,
+				'post_date_gmt' => $post_date_gmt,
+			);
+
+			$new_post_id = wp_insert_post( $new_post );
+
+			// Set the featured image if the post was successfully created and image was saved
+			if ( $new_post_id && $media_id ) {
+				set_post_thumbnail( $new_post_id, $media_id );
+
+				// Update the attachment to set the correct post parent
+				wp_update_post( array(
+					'ID' => $media_id,
+					'post_parent' => $new_post_id,
 				) );
+			}
 
-				if ( ! empty( $existing_post ) ) {
-					continue;
-				}
-
-				// Download the image to the WordPress media library
-				if ( $post['media_type'] == 'IMAGE' || $post['media_type'] == 'CAROUSEL_ALBUM' ) {
-					$media_url = $post['media_url'];
-					$media_id = itwp_save_image_to_media_library( $media_url, $post_id );
-
-					if ( is_wp_error( $media_id ) ) {
-						continue; // Skip this post if the image couldn't be saved
-					}
-
-					// Use the local image URL in the post content
-					$image_url = wp_get_attachment_url( $media_id );
-					$post_content = '<img src="' . esc_url( $image_url ) . '" alt="' . esc_attr( $post['caption'] ) . '" />';
-				} elseif ( $post['media_type'] == 'VIDEO' ) {
-					$post_content = '<video controls src="' . esc_url( $post['media_url'] ) . '"></video>';
-				}
-
-				// Append caption to the post content
-				$post_content .= '<p>' . esc_html( $post['caption'] ) . '</p>';
-
-				// Convert Instagram timestamp to WordPress date format
-				$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post['timestamp'] ) );
-				$post_date = get_date_from_gmt( $post_date_gmt );
-
-				// Format the post title using the selected date format
-				$formatted_date = date( $date_format, strtotime( $post_date ) );
-				$post_title = 'post ' . $formatted_date;
-
-				// Insert post into database with Instagram post date
-				$new_post = array(
-					'post_title'   => $post_title,
-					'post_content' => $post_content,
-					'post_status'  => 'publish',
-					'post_type'    => 'instagram_post',
-					'post_date'    => $post_date,
-					'post_date_gmt' => $post_date_gmt,
-				);
-
-				$new_post_id = wp_insert_post( $new_post );
-
-				// Set the featured image if the post was successfully created and image was saved
-				if ( $new_post_id && $media_id ) {
-					set_post_thumbnail( $new_post_id, $media_id );
-				}
-
-				// Save Instagram post ID as post meta
-				if ( $new_post_id ) {
-					add_post_meta( $new_post_id, 'instagram_post_id', $post_id );
-				}
+			// Save Instagram post ID as post meta
+			if ( $new_post_id ) {
+				add_post_meta( $new_post_id, 'instagram_post_id', $post_id );
 			}
 		}
-
-		// Handle pagination
-		$api_url = isset( $data['paging']['next'] ) ? $data['paging']['next'] : null;
 	}
 }
 add_action( 'itwp_daily_instagram_fetch', 'itwp_fetch_and_store_instagram_posts' );
 
-// Function to save Instagram images to the media library with a unique identifier
-function itwp_save_image_to_media_library( $image_url, $post_id ) {
+// Function to save Instagram images or videos to the media library with a unique identifier and correct file format
+function itwp_save_image_to_media_library( $media_url, $post_id, $desired_mime_type ) {
 	// Define upload directory and folder
 	$upload_dir = wp_upload_dir();
-	$upload_path = $upload_dir['basedir'] . '/instagram-images/';
+	$upload_path = $upload_dir['basedir'] . '/instagram-media/';
 
 	// Create the directory if it doesn't exist
 	if ( ! file_exists( $upload_path ) ) {
 		wp_mkdir_p( $upload_path );
 	}
 
-	// Generate a unique filename
-	$filename = uniqid( 'instagram_' ) . '.' . pathinfo( $image_url, PATHINFO_EXTENSION );
+	// Download the media
+	$media_data = wp_remote_get( $media_url );
+
+	if ( is_wp_error( $media_data ) ) {
+		return $media_data;
+	}
+
+	$media_data = wp_remote_retrieve_body( $media_data );
+
+	if ( empty( $media_data ) ) {
+		return new WP_Error( 'media_download_error', 'Failed to download media from Instagram.' );
+	}
+
+	// Determine the original file extension
+	$original_extension = pathinfo( $media_url, PATHINFO_EXTENSION );
+
+	// Set the desired extension based on the desired MIME type
+	$extension = ($desired_mime_type == 'image/jpeg') ? 'jpg' : 'mp4';
+
+	// Generate a descriptive filename with the correct extension
+	$filename = 'instagram_' . $post_id . '_' . uniqid() . '.' . $extension;
 	$file_path = $upload_path . $filename;
 
-	// Download the image
-	$image_data = wp_remote_get( $image_url );
+	// Save the media to the local file system
+	file_put_contents( $file_path, $media_data );
 
-	if ( is_wp_error( $image_data ) ) {
-		return $image_data;
+	// Convert the image to JPG or video to MP4 if necessary
+	if ($desired_mime_type == 'image/jpeg' && $original_extension != 'jpg') {
+		$image = imagecreatefromstring(file_get_contents($file_path));
+		if ($image === false) {
+			return new WP_Error( 'image_conversion_error', 'Failed to convert image to JPG.' );
+		}
+		imagejpeg($image, $file_path, 90);
+		imagedestroy($image);
+	} elseif ($desired_mime_type == 'video/mp4' && $original_extension != 'mp4') {
+		// Conversion to MP4 would normally require a server-side tool like FFmpeg,
+		// which is outside the scope of this example. Add your server-side conversion code here if needed.
 	}
 
-	$image_data = wp_remote_retrieve_body( $image_data );
-
-	if ( empty( $image_data ) ) {
-		return new WP_Error( 'image_download_error', 'Failed to download image from Instagram.' );
-	}
-
-	// Save the image to the media library
-	file_put_contents( $file_path, $image_data );
-
-	// Prepare the image for WordPress media library
+	// Prepare the media for WordPress media library
 	$wp_filetype = wp_check_filetype( $filename, null );
 	$attachment = array(
 		'post_mime_type' => $wp_filetype['type'],
@@ -301,12 +332,12 @@ function itwp_options_page() {
                 </tr>
             </table>
 			<?php submit_button(); ?>
+        </form>
 
-            <!-- Button to manually fetch Instagram posts -->
-            <form method="post">
-                <input type="hidden" name="itwp_manual_fetch" value="1" />
-				<?php submit_button( __( 'Fetch Instagram Posts Now', 'instagram-to-wordpress-posts' ), 'primary', 'fetch_now' ); ?>
-            </form>
+        <!-- Form to manually fetch Instagram posts -->
+        <form method="post">
+            <input type="hidden" name="itwp_manual_fetch" value="1" />
+			<?php submit_button( __( 'Fetch Instagram Posts Now', 'instagram-to-wordpress-posts' ), 'primary', 'fetch_now' ); ?>
         </form>
     </div>
 	<?php
@@ -314,12 +345,13 @@ function itwp_options_page() {
 
 // Handle manual fetch button
 function itwp_handle_manual_fetch() {
+	// Check if the manual fetch form was submitted
 	if ( isset( $_POST['itwp_manual_fetch'] ) && $_POST['itwp_manual_fetch'] == '1' ) {
 		itwp_fetch_and_store_instagram_posts();
 		add_action( 'admin_notices', 'itwp_manual_fetch_notice' );
 	}
 }
-add_action( 'admin_init', 'itwp_handle_manual_fetch' );
+add_action( 'admin_post_itwp_manual_fetch', 'itwp_handle_manual_fetch' );
 
 // Admin notice after manual fetch
 function itwp_manual_fetch_notice() {
