@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.5
+ * Version: 1.5.1
  * Author: Sven Grün
  * Text Domain: instagram-to-wordpress-posts
  * Domain Path: /languages
@@ -57,6 +57,12 @@ function itwp_register_instagram_post_type() {
 	register_post_type( 'instagram_post', $args );
 }
 add_action( 'init', 'itwp_register_instagram_post_type' );
+
+// Ensure theme supports post thumbnails
+function itwp_theme_support() {
+	add_theme_support('post-thumbnails', array('post', 'instagram_post'));
+}
+add_action('after_setup_theme', 'itwp_theme_support');
 
 // Schedule a daily event to fetch Instagram posts
 function itwp_schedule_instagram_fetch() {
@@ -156,7 +162,7 @@ function itwp_fetch_and_store_instagram_posts() {
 
 				$new_post_id = wp_insert_post( $new_post );
 
-				// Set the featured image
+				// Set the featured image if the post was successfully created and image was saved
 				if ( $new_post_id && $media_id ) {
 					set_post_thumbnail( $new_post_id, $media_id );
 				}
