@@ -4,7 +4,7 @@
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
  * Version: 1.2
  * Author: Sven Grün
- * GitHub Plugin URI: https://github.com/yourusername/instagram-to-wordpress-posts
+ * GitHub Plugin URI: https://github.com/smpx7/instagram-to-wordpress-posts
  * GitHub Branch: main
  */
 
