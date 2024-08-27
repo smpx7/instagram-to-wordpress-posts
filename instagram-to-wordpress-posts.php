@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.2
+ * Version: 1.4
  * Author: Sven Grün
  * GitHub Plugin URI: https://github.com/smpx7/instagram-to-wordpress-posts
  * GitHub Branch: main
@@ -12,9 +12,6 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
-
-// Include the Composer autoload file
-#require_once __DIR__ . '/vendor/autoload.php';
 
 // Register custom post type for Instagram posts
 function itwp_register_instagram_post_type() {
@@ -66,7 +63,10 @@ function itwp_fetch_and_store_instagram_posts() {
 	$access_token = get_option( 'itwp_access_token', '' );
 
 	if ( empty( $access_token ) ) {
-		trigger_error('Access token is missing.', E_USER_WARNING);
+		// Display error message if access token is missing
+		add_action('admin_notices', function() {
+			echo '<div class="notice notice-error is-dismissible"><p>Instagram Access Token is missing. Please configure it in the settings page.</p></div>';
+		});
 		return;
 	}
 
@@ -74,7 +74,9 @@ function itwp_fetch_and_store_instagram_posts() {
 	$response = wp_remote_get( $api_url );
 
 	if ( is_wp_error( $response ) ) {
-		trigger_error('Failed to retrieve Instagram posts.', E_USER_WARNING);
+		add_action('admin_notices', function() {
+			echo '<div class="notice notice-error is-dismissible"><p>Failed to retrieve Instagram posts.</p></div>';
+		});
 		return;
 	}
 
@@ -82,7 +84,9 @@ function itwp_fetch_and_store_instagram_posts() {
 	$data = json_decode( $body, true );
 
 	if ( isset( $data['error'] ) ) {
-		trigger_error('Instagram API Error: ' . $data['error']['message'], E_USER_WARNING);
+		add_action('admin_notices', function() use ($data) {
+			echo '<div class="notice notice-error is-dismissible"><p>Instagram API Error: ' . esc_html($data['error']['message']) . '</p></div>';
+		});
 		return;
 	}
 
@@ -183,7 +187,31 @@ function itwp_options_page() {
                 </tr>
             </table>
 			<?php submit_button(); ?>
+
+            <!-- Button to manually fetch Instagram posts -->
+            <form method="post">
+                <input type="hidden" name="itwp_manual_fetch" value="1" />
+				<?php submit_button( 'Fetch Instagram Posts Now', 'primary', 'fetch_now' ); ?>
+            </form>
         </form>
+    </div>
+	<?php
+}
+
+// Handle manual fetch button
+function itwp_handle_manual_fetch() {
+	if ( isset( $_POST['itwp_manual_fetch'] ) && $_POST['itwp_manual_fetch'] == '1' ) {
+		itwp_fetch_and_store_instagram_posts();
+		add_action( 'admin_notices', 'itwp_manual_fetch_notice' );
+	}
+}
+add_action( 'admin_init', 'itwp_handle_manual_fetch' );
+
+// Admin notice after manual fetch
+function itwp_manual_fetch_notice() {
+	?>
+    <div class="notice notice-success is-dismissible">
+        <p><?php _e( 'Instagram posts fetched successfully.', 'itwp' ); ?></p>
     </div>
 	<?php
 }
