@@ -2,9 +2,9 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.1
+ * Version: 1.2
  * Author: Sven Grün
- * GitHub Plugin URI: https://github.com/smpx7/instagram-to-wordpress-posts
+ * GitHub Plugin URI: https://github.com/yourusername/instagram-to-wordpress-posts
  * GitHub Branch: main
  */
 
@@ -12,6 +12,33 @@
 if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
+
+// Include the Composer autoload file
+require_once __DIR__ . '/vendor/autoload.php';
+
+// Git Updater requires the plugin headers to be correctly formatted.
+// Initialize Git Updater if necessary (optional; Git Updater generally works automatically with the correct headers).
+
+// Custom error handler
+function itwp_custom_error_handler($errno, $errstr, $errfile, $errline) {
+	// Only handle the error if it is not suppressed by @
+	if (!(error_reporting() & $errno)) {
+		return;
+	}
+
+	// Display the error message
+	echo "<div class='notice notice-error'><p><strong>Error:</strong> [$errno] $errstr in $errfile on line $errline</p></div>";
+
+	// Prevent WordPress from sending an email notification
+	if (defined('DOING_AJAX') && DOING_AJAX) {
+		wp_die(); // Stop execution for AJAX requests
+	} else {
+		die(); // Stop execution for non-AJAX requests
+	}
+}
+
+// Register the custom error handler
+set_error_handler('itwp_custom_error_handler');
 
 // Register custom post type for Instagram posts
 function itwp_register_instagram_post_type() {
@@ -48,7 +75,6 @@ function itwp_register_instagram_post_type() {
 
 	register_post_type( 'instagram_post', $args );
 }
-
 add_action( 'init', 'itwp_register_instagram_post_type' );
 
 // Schedule a daily event to fetch Instagram posts
@@ -57,7 +83,6 @@ function itwp_schedule_instagram_fetch() {
 		wp_schedule_event( time(), 'daily', 'itwp_daily_instagram_fetch' );
 	}
 }
-
 add_action( 'wp', 'itwp_schedule_instagram_fetch' );
 
 // Fetch Instagram posts and save to database
@@ -65,13 +90,15 @@ function itwp_fetch_and_store_instagram_posts() {
 	$access_token = get_option( 'itwp_access_token', '' );
 
 	if ( empty( $access_token ) ) {
+		trigger_error('Access token is missing.', E_USER_WARNING);
 		return;
 	}
 
-	$api_url  = 'https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink&access_token=' . esc_attr( $access_token );
+	$api_url = 'https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink&access_token=' . esc_attr( $access_token );
 	$response = wp_remote_get( $api_url );
 
 	if ( is_wp_error( $response ) ) {
+		trigger_error('Failed to retrieve Instagram posts.', E_USER_WARNING);
 		return;
 	}
 
@@ -79,6 +106,7 @@ function itwp_fetch_and_store_instagram_posts() {
 	$data = json_decode( $body, true );
 
 	if ( isset( $data['error'] ) ) {
+		trigger_error('Instagram API Error: ' . $data['error']['message'], E_USER_WARNING);
 		return;
 	}
 
@@ -88,9 +116,9 @@ function itwp_fetch_and_store_instagram_posts() {
 
 			// Check if post already exists
 			$existing_post = get_posts( array(
-				'post_type'      => 'instagram_post',
-				'meta_key'       => 'instagram_post_id',
-				'meta_value'     => $post_id,
+				'post_type' => 'instagram_post',
+				'meta_key' => 'instagram_post_id',
+				'meta_value' => $post_id,
 				'posts_per_page' => 1,
 			) );
 
@@ -126,13 +154,12 @@ function itwp_fetch_and_store_instagram_posts() {
 		}
 	}
 }
-
 add_action( 'itwp_daily_instagram_fetch', 'itwp_fetch_and_store_instagram_posts' );
 
 // Shortcode to display Instagram posts from the database with a specified template
 function itwp_display_instagram_posts( $atts ) {
 	$atts = shortcode_atts( array(
-		'count'    => 5, // Number of posts to display
+		'count' => 5, // Number of posts to display
 		'template' => 'grid', // Default template
 	), $atts );
 
@@ -149,10 +176,8 @@ function itwp_display_instagram_posts( $atts ) {
 	// Include the template file
 	ob_start();
 	include $template_file;
-
 	return ob_get_clean();
 }
-
 add_shortcode( 'itwp', 'itwp_display_instagram_posts' );
 
 // Register settings and settings page
@@ -178,8 +203,7 @@ function itwp_options_page() {
             <table>
                 <tr valign="top">
                     <th scope="row"><label for="itwp_access_token">Access Token</label></th>
-                    <td><input type="text" id="itwp_access_token" name="itwp_access_token"
-                               value="<?php echo get_option( 'itwp_access_token' ); ?>"/></td>
+                    <td><input type="text" id="itwp_access_token" name="itwp_access_token" value="<?php echo get_option('itwp_access_token'); ?>" /></td>
                 </tr>
             </table>
 			<?php submit_button(); ?>
@@ -187,10 +211,3 @@ function itwp_options_page() {
     </div>
 	<?php
 }
-
-// GitHub Updater Class
-#if ( is_admin() ) {
-#	$plugin_basename = plugin_basename( __FILE__ );
-#	require_once plugin_dir_path( __FILE__ ) . 'github-updater.php';
-#	new GitHubUpdater( __FILE__, 'smpx7', 'instagram-to-wordpress-posts', 'main' );
-#}
