@@ -2,8 +2,10 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.4.3
+ * Version: 1.5
  * Author: Sven Grün
+ * Text Domain: instagram-to-wordpress-posts
+ * Domain Path: /languages
  * GitHub Plugin URI: https://github.com/smpx7/instagram-to-wordpress-posts
  * GitHub Branch: main
  */
@@ -13,22 +15,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit; // Exit if accessed directly.
 }
 
+// Load text domain for translations
+function itwp_load_textdomain() {
+	load_plugin_textdomain( 'instagram-to-wordpress-posts', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+}
+add_action( 'plugins_loaded', 'itwp_load_textdomain' );
+
 // Register custom post type for Instagram posts
 function itwp_register_instagram_post_type() {
 	$labels = array(
-		'name'               => 'Instagram Posts',
-		'singular_name'      => 'Instagram Post',
-		'menu_name'          => 'Instagram Posts',
-		'name_admin_bar'     => 'Instagram Post',
-		'add_new'            => 'Add New',
-		'add_new_item'       => 'Add New Instagram Post',
-		'new_item'           => 'New Instagram Post',
-		'edit_item'          => 'Edit Instagram Post',
-		'view_item'          => 'View Instagram Post',
-		'all_items'          => 'All Instagram Posts',
-		'search_items'       => 'Search Instagram Posts',
-		'not_found'          => 'No Instagram posts found.',
-		'not_found_in_trash' => 'No Instagram posts found in Trash.',
+		'name'               => __( 'Instagram Posts', 'instagram-to-wordpress-posts' ),
+		'singular_name'      => __( 'Instagram Post', 'instagram-to-wordpress-posts' ),
+		'menu_name'          => __( 'Instagram Posts', 'instagram-to-wordpress-posts' ),
+		'name_admin_bar'     => __( 'Instagram Post', 'instagram-to-wordpress-posts' ),
+		'add_new'            => __( 'Add New', 'instagram-to-wordpress-posts' ),
+		'add_new_item'       => __( 'Add New Instagram Post', 'instagram-to-wordpress-posts' ),
+		'new_item'           => __( 'New Instagram Post', 'instagram-to-wordpress-posts' ),
+		'edit_item'          => __( 'Edit Instagram Post', 'instagram-to-wordpress-posts' ),
+		'view_item'          => __( 'View Instagram Post', 'instagram-to-wordpress-posts' ),
+		'all_items'          => __( 'All Instagram Posts', 'instagram-to-wordpress-posts' ),
+		'search_items'       => __( 'Search Instagram Posts', 'instagram-to-wordpress-posts' ),
+		'not_found'          => __( 'No Instagram posts found.', 'instagram-to-wordpress-posts' ),
+		'not_found_in_trash' => __( 'No Instagram posts found in Trash.', 'instagram-to-wordpress-posts' ),
 	);
 
 	$args = array(
@@ -61,23 +69,24 @@ add_action( 'wp', 'itwp_schedule_instagram_fetch' );
 // Fetch Instagram posts and save to database
 function itwp_fetch_and_store_instagram_posts() {
 	$access_token = get_option( 'itwp_access_token', '' );
+	$fetch_limit = get_option( 'itwp_fetch_limit', 10 );
+	$date_format = get_option( 'itwp_date_format', 'Y-m-d H:i:s' );
 
 	if ( empty( $access_token ) ) {
 		add_action('admin_notices', function() {
-			echo '<div class="notice notice-error is-dismissible"><p>Instagram Access Token is missing. Please configure it in the settings page.</p></div>';
+			echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Instagram Access Token is missing. Please configure it in the settings page.', 'instagram-to-wordpress-posts' ) . '</p></div>';
 		});
 		return;
 	}
 
-	$limit = 10; // Specify the number of posts to fetch per request
-	$api_url = 'https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink&limit=' . $limit . '&access_token=' . esc_attr( $access_token );
+	$api_url = 'https://graph.instagram.com/me/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=' . $fetch_limit . '&access_token=' . esc_attr( $access_token );
 
 	while ( $api_url ) {
 		$response = wp_remote_get( $api_url );
 
 		if ( is_wp_error( $response ) ) {
 			add_action('admin_notices', function() {
-				echo '<div class="notice notice-error is-dismissible"><p>Failed to retrieve Instagram posts.</p></div>';
+				echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Failed to retrieve Instagram posts.', 'instagram-to-wordpress-posts' ) . '</p></div>';
 			});
 			return;
 		}
@@ -87,7 +96,7 @@ function itwp_fetch_and_store_instagram_posts() {
 
 		if ( isset( $data['error'] ) ) {
 			add_action('admin_notices', function() use ($data) {
-				echo '<div class="notice notice-error is-dismissible"><p>Instagram API Error: ' . esc_html($data['error']['message']) . '</p></div>';
+				echo '<div class="notice notice-error is-dismissible"><p>' . esc_html__( 'Instagram API Error: ', 'instagram-to-wordpress-posts' ) . esc_html($data['error']['message']) . '</p></div>';
 			});
 			return;
 		}
@@ -127,19 +136,30 @@ function itwp_fetch_and_store_instagram_posts() {
 				// Append caption to the post content
 				$post_content .= '<p>' . esc_html( $post['caption'] ) . '</p>';
 
-				// Generate a formatted date for the post title
-				$current_datetime = current_time( 'Y-m-d H:i:s' );
-				$formatted_datetime = date( 'Y-m-d H:i:s \U\h\r', strtotime( $current_datetime ) );
+				// Convert Instagram timestamp to WordPress date format
+				$post_date_gmt = gmdate( 'Y-m-d H:i:s', strtotime( $post['timestamp'] ) );
+				$post_date = get_date_from_gmt( $post_date_gmt );
 
-				// Insert post into database
+				// Format the post title using the selected date format
+				$formatted_date = date( $date_format, strtotime( $post_date ) );
+				$post_title = 'post ' . $formatted_date;
+
+				// Insert post into database with Instagram post date
 				$new_post = array(
-					'post_title'   => 'post ' . $formatted_datetime,
+					'post_title'   => $post_title,
 					'post_content' => $post_content,
 					'post_status'  => 'publish',
 					'post_type'    => 'instagram_post',
+					'post_date'    => $post_date,
+					'post_date_gmt' => $post_date_gmt,
 				);
 
 				$new_post_id = wp_insert_post( $new_post );
+
+				// Set the featured image
+				if ( $new_post_id && $media_id ) {
+					set_post_thumbnail( $new_post_id, $media_id );
+				}
 
 				// Save Instagram post ID as post meta
 				if ( $new_post_id ) {
@@ -215,7 +235,7 @@ function itwp_display_instagram_posts( $atts ) {
 	$template_file = plugin_dir_path( __FILE__ ) . 'templates/template-' . sanitize_text_field( $atts['template'] ) . '.php';
 
 	if ( ! file_exists( $template_file ) ) {
-		return 'Template not found.';
+		return __( 'Template not found.', 'instagram-to-wordpress-posts' );
 	}
 
 	// Set $count variable for template
@@ -231,13 +251,18 @@ add_shortcode( 'itwp', 'itwp_display_instagram_posts' );
 // Register settings and settings page
 function itwp_register_settings() {
 	add_option( 'itwp_access_token', '' );
+	add_option( 'itwp_fetch_limit', 10 ); // Default limit
+	add_option( 'itwp_date_format', 'Y-m-d H:i:s' ); // Default date format
+
 	register_setting( 'itwp_options_group', 'itwp_access_token', 'itwp_callback' );
+	register_setting( 'itwp_options_group', 'itwp_fetch_limit', 'intval' );
+	register_setting( 'itwp_options_group', 'itwp_date_format', 'sanitize_text_field' );
 }
 
 add_action( 'admin_init', 'itwp_register_settings' );
 
 function itwp_register_options_page() {
-	add_options_page( 'Instagram API Settings', 'Instagram API', 'manage_options', 'itwp', 'itwp_options_page' );
+	add_options_page( __( 'Instagram API Settings', 'instagram-to-wordpress-posts' ), __( 'Instagram API', 'instagram-to-wordpress-posts' ), 'manage_options', 'itwp', 'itwp_options_page' );
 }
 
 add_action( 'admin_menu', 'itwp_register_options_page' );
@@ -245,13 +270,28 @@ add_action( 'admin_menu', 'itwp_register_options_page' );
 function itwp_options_page() {
 	?>
     <div>
-        <h2>Instagram API Settings</h2>
+        <h2><?php _e( 'Instagram API Settings', 'instagram-to-wordpress-posts' ); ?></h2>
         <form method="post" action="options.php">
 			<?php settings_fields( 'itwp_options_group' ); ?>
             <table>
                 <tr valign="top">
-                    <th scope="row"><label for="itwp_access_token">Access Token</label></th>
-                    <td><input type="text" id="itwp_access_token" name="itwp_access_token" value="<?php echo get_option('itwp_access_token'); ?>" /></td>
+                    <th scope="row"><label for="itwp_access_token"><?php _e( 'Access Token', 'instagram-to-wordpress-posts' ); ?></label></th>
+                    <td><input type="text" id="itwp_access_token" name="itwp_access_token" value="<?php echo esc_attr( get_option('itwp_access_token') ); ?>" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row"><label for="itwp_fetch_limit"><?php _e( 'Number of Posts to Fetch', 'instagram-to-wordpress-posts' ); ?></label></th>
+                    <td><input type="number" id="itwp_fetch_limit" name="itwp_fetch_limit" value="<?php echo esc_attr( get_option('itwp_fetch_limit', 10) ); ?>" min="1" /></td>
+                </tr>
+                <tr valign="top">
+                    <th scope="row"><label for="itwp_date_format"><?php _e( 'Date Format for Post Title', 'instagram-to-wordpress-posts' ); ?></label></th>
+                    <td>
+                        <select id="itwp_date_format" name="itwp_date_format">
+                            <option value="Y-m-d H:i:s" <?php selected( get_option('itwp_date_format'), 'Y-m-d H:i:s' ); ?>><?php echo date('Y-m-d H:i:s'); ?></option>
+                            <option value="Y-m-d H:i" <?php selected( get_option('itwp_date_format'), 'Y-m-d H:i' ); ?>><?php echo date('Y-m-d H:i'); ?></option>
+                            <option value="d.m.Y H:i:s" <?php selected( get_option('itwp_date_format'), 'd.m.Y H:i:s' ); ?>><?php echo date('d.m.Y H:i:s'); ?></option>
+                            <option value="d.m.Y H:i" <?php selected( get_option('itwp_date_format'), 'd.m.Y H:i' ); ?>><?php echo date('d.m.Y H:i'); ?></option>
+                        </select>
+                    </td>
                 </tr>
             </table>
 			<?php submit_button(); ?>
@@ -259,7 +299,7 @@ function itwp_options_page() {
             <!-- Button to manually fetch Instagram posts -->
             <form method="post">
                 <input type="hidden" name="itwp_manual_fetch" value="1" />
-				<?php submit_button( 'Fetch Instagram Posts Now', 'primary', 'fetch_now' ); ?>
+				<?php submit_button( __( 'Fetch Instagram Posts Now', 'instagram-to-wordpress-posts' ), 'primary', 'fetch_now' ); ?>
             </form>
         </form>
     </div>
@@ -279,7 +319,7 @@ add_action( 'admin_init', 'itwp_handle_manual_fetch' );
 function itwp_manual_fetch_notice() {
 	?>
     <div class="notice notice-success is-dismissible">
-        <p><?php _e( 'Instagram posts fetched successfully.', 'itwp' ); ?></p>
+        <p><?php _e( 'Instagram posts fetched successfully.', 'instagram-to-wordpress-posts' ); ?></p>
     </div>
 	<?php
 }
