@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.4.1
+ * Version: 1.4.2
  * Author: Sven Grün
  * GitHub Plugin URI: https://github.com/smpx7/instagram-to-wordpress-posts
  * GitHub Branch: main
@@ -124,9 +124,13 @@ function itwp_fetch_and_store_instagram_posts() {
 			// Append caption to the post content
 			$post_content .= '<p>' . esc_html( $post['caption'] ) . '</p>';
 
+			// Generate a formatted date for the post title
+			$current_datetime = current_time( 'Y-m-d H:i:s' );
+			$formatted_datetime = date( 'Y-m-d H:i:s \U\h\r', strtotime( $current_datetime ) );
+
 			// Insert post into database
 			$new_post = array(
-				'post_title'   => 'Instagram Post ' . $post_id,
+				'post_title'   => 'post ' . $formatted_datetime,
 				'post_content' => $post_content,
 				'post_status'  => 'publish',
 				'post_type'    => 'instagram_post',
@@ -143,7 +147,7 @@ function itwp_fetch_and_store_instagram_posts() {
 }
 add_action( 'itwp_daily_instagram_fetch', 'itwp_fetch_and_store_instagram_posts' );
 
-// Function to save Instagram images to the media library
+// Function to save Instagram images to the media library with a unique identifier
 function itwp_save_image_to_media_library( $image_url, $post_id ) {
 	// Define upload directory and folder
 	$upload_dir = wp_upload_dir();
@@ -154,8 +158,8 @@ function itwp_save_image_to_media_library( $image_url, $post_id ) {
 		wp_mkdir_p( $upload_path );
 	}
 
-	// Get the file name and path
-	$filename = basename( $image_url );
+	// Generate a unique filename
+	$filename = uniqid( 'instagram_' ) . '.' . pathinfo( $image_url, PATHINFO_EXTENSION );
 	$file_path = $upload_path . $filename;
 
 	// Download the image
