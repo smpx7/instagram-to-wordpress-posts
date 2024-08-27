@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Include the Composer autoload file
-require_once __DIR__ . '/vendor/autoload.php';
+#require_once __DIR__ . '/vendor/autoload.php';
 
 // Git Updater requires the plugin headers to be correctly formatted.
 // Initialize Git Updater if necessary (optional; Git Updater generally works automatically with the correct headers).
