@@ -9,14 +9,10 @@ class ITWP_Settings {
 
 	public static function register_settings() {
 		add_option( 'itwp_access_token', '' );
-		add_option( 'itwp_client_id', '' ); // Option for Client ID
-		add_option( 'itwp_client_secret', '' ); // Option for Client Secret
 		add_option( 'itwp_fetch_limit', 10 ); // Default limit
 		add_option( 'itwp_date_format', 'Y-m-d H:i:s' ); // Default date format
 
 		register_setting( 'itwp_options_group', 'itwp_access_token', 'sanitize_text_field' );
-		register_setting( 'itwp_options_group', 'itwp_client_id', 'sanitize_text_field' ); // Register new setting for Client ID
-		register_setting( 'itwp_options_group', 'itwp_client_secret', 'sanitize_text_field' ); // Register new setting for Client Secret
 		register_setting( 'itwp_options_group', 'itwp_fetch_limit', 'intval' );
 		register_setting( 'itwp_options_group', 'itwp_date_format', 'sanitize_text_field' );
 	}
@@ -26,13 +22,7 @@ class ITWP_Settings {
 	}
 
 	public static function options_page() {
-		// Get stored Client ID and Secret
-		$client_id = get_option('itwp_client_id');
-		$client_secret = get_option('itwp_client_secret');
-		$redirect_uri = urlencode(admin_url('admin.php?page=itwp')); // This URL must be registered in your Instagram App settings
-
-		// Construct the Instagram authorization URL
-		$auth_url = "https://api.instagram.com/oauth/authorize?client_id={$client_id}&redirect_uri={$redirect_uri}&scope=user_profile,user_media&response_type=code";
+		$access_token = get_option('itwp_access_token');
 		?>
         <div>
             <h2><?php _e( 'Instagram API Settings', 'instagram-to-wordpress-posts' ); ?></h2>
@@ -40,16 +30,8 @@ class ITWP_Settings {
 				<?php settings_fields( 'itwp_options_group' ); ?>
                 <table>
                     <tr valign="top">
-                        <th scope="row"><label for="itwp_client_id"><?php _e( 'Client ID', 'instagram-to-wordpress-posts' ); ?></label></th>
-                        <td><input type="text" id="itwp_client_id" name="itwp_client_id" value="<?php echo esc_attr( $client_id ); ?>" /></td>
-                    </tr>
-                    <tr valign="top">
-                        <th scope="row"><label for="itwp_client_secret"><?php _e( 'Client Secret', 'instagram-to-wordpress-posts' ); ?></label></th>
-                        <td><input type="text" id="itwp_client_secret" name="itwp_client_secret" value="<?php echo esc_attr( $client_secret ); ?>" /></td>
-                    </tr>
-                    <tr valign="top">
                         <th scope="row"><label for="itwp_access_token"><?php _e( 'Access Token', 'instagram-to-wordpress-posts' ); ?></label></th>
-                        <td><input type="text" id="itwp_access_token" name="itwp_access_token" value="<?php echo esc_attr( get_option('itwp_access_token') ); ?>" readonly /></td>
+                        <td><input type="text" id="itwp_access_token" name="itwp_access_token" value="<?php echo esc_attr( $access_token ); ?>" /></td>
                     </tr>
                     <tr valign="top">
                         <th scope="row"><label for="itwp_fetch_limit"><?php _e( 'Number of Posts to Fetch', 'instagram-to-wordpress-posts' ); ?></label></th>
@@ -70,10 +52,7 @@ class ITWP_Settings {
 				<?php submit_button(); ?>
             </form>
 
-            <!-- Authorization Button -->
-            <a href="<?php echo esc_url($auth_url); ?>" class="button button-primary"><?php _e('Authorize with Instagram', 'instagram-to-wordpress-posts'); ?></a>
-
-            <!-- Form to manually fetch Instagram posts -->
+            <!-- Manual Fetch Button -->
             <button id="itwp-fetch-btn" class="button button-primary"><?php _e( 'Fetch Instagram Posts Now', 'instagram-to-wordpress-posts' ); ?></button>
             <progress id="itwp-fetch-progress" value="0" max="100" style="width:100%; display:none;"></progress>
         </div>

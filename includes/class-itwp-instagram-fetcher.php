@@ -86,8 +86,8 @@ class ITWP_Instagram_Fetcher {
 				throw new Exception( 'No data received from Instagram API.' );
 			}
 		} catch ( Exception $e ) {
-			error_log( 'Instagram to WordPress Posts AJAX Fetch Next Batch Error: ' . $e->get_message() );
-			wp_send_json_error( array( 'message' => __( 'Error fetching the next batch of posts: ', 'instagram-to-wordpress-posts' ) . $e->get_message() ) );
+			error_log( 'Instagram to WordPress Posts AJAX Fetch Next Batch Error: ' . $e->getMessage() );
+			wp_send_json_error( array( 'message' => __( 'Error fetching the next batch of posts: ', 'instagram-to-wordpress-posts' ) . $e->getMessage() ) );
 		}
 	}
 }
