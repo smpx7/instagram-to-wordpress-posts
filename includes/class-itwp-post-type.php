@@ -3,6 +3,7 @@ class ITWP_Post_Type {
 	public static function register() {
 		add_action('init', array(__CLASS__, 'register_post_type'));
 		add_action('add_meta_boxes', array(__CLASS__, 'add_meta_boxes'));
+		add_action('restrict_manage_posts', array(__CLASS__, 'add_fetch_button')); // Hook into restrict_manage_posts
 	}
 
 	public static function register_post_type() {
@@ -44,5 +45,12 @@ class ITWP_Post_Type {
 		_e('Date/Time when the post was fetched:', 'instagram-to-wordpress-posts');
 		echo '</label> ';
 		echo '<input type="text" id="itwp_fetch_datetime" name="itwp_fetch_datetime" value="' . esc_attr($fetch_datetime) . '" readonly style="width:100%;" />';
+	}
+
+	public static function add_fetch_button($post_type) {
+		if ($post_type == 'instagram_post') {
+			echo '<button id="itwp-fetch-btn" class="button button-primary" style="margin: 0 8px 0 0;">' . __('Fetch Instagram Posts Now', 'instagram-to-wordpress-posts') . '</button>';
+			echo '<progress id="itwp-fetch-progress" value="0" max="100" style="width:200px; display:none; margin-left: 10px;"></progress>';
+		}
 	}
 }

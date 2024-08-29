@@ -33,14 +33,19 @@ function itwp_load_textdomain() {
 add_action( 'plugins_loaded', 'itwp_load_textdomain' );
 
 // Enqueue the JavaScript for handling the AJAX fetch
-function itwp_enqueue_scripts() {
-	wp_enqueue_script( 'itwp-fetch-script', plugin_dir_url( __FILE__ ) . 'js/itwp-fetch.js', array( 'jquery' ), '1.0', true );
-	wp_localize_script( 'itwp-fetch-script', 'itwp_ajax_obj', array(
-		'ajax_url' => admin_url( 'admin-ajax.php' ),
-		'nonce'    => wp_create_nonce( 'itwp_fetch_nonce' )
-	));
+// Enqueue the JavaScript for handling the AJAX fetch
+function itwp_enqueue_scripts($hook) {
+	// Check if we're on the settings page or the post type listing page
+	if ($hook == 'settings_page_itwp' || $hook == 'edit.php' && isset($_GET['post_type']) && $_GET['post_type'] == 'instagram_post') {
+		wp_enqueue_script( 'itwp-fetch-script', plugin_dir_url( __FILE__ ) . 'js/itwp-fetch.js', array( 'jquery' ), '1.0', true );
+		wp_localize_script( 'itwp-fetch-script', 'itwp_ajax_obj', array(
+			'ajax_url' => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'itwp_fetch_nonce' )
+		));
+	}
 }
 add_action( 'admin_enqueue_scripts', 'itwp_enqueue_scripts' );
+
 
 // Include necessary files
 require_once plugin_dir_path( __FILE__ ) . 'includes/class-itwp-post-type.php';
