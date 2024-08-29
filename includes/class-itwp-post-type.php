@@ -9,11 +9,18 @@ class ITWP_Post_Type {
 		register_post_type('instagram_post', array(
 			'labels' => array(
 				'name' => __('Instagram Posts', 'instagram-to-wordpress-posts'),
-				'singular_name' => __('Instagram Post', 'instagram-to-wordpress-posts')
+				'singular_name' => __('Instagram Post', 'instagram-to-wordpress-posts'),
+				'add_new_item' => '', // Remove "Add New" link
 			),
 			'public' => true,
 			'has_archive' => true,
 			'supports' => array('title', 'editor', 'thumbnail', 'custom-fields'),
+			'show_in_menu' => true,
+			'show_in_admin_bar' => false, // Removes "New Post" from the admin toolbar
+			'capabilities' => array(
+				'create_posts' => 'do_not_allow', // Removes "Add New" button
+			),
+			'map_meta_cap' => true, // Maps the meta capabilities, necessary when modifying capabilities
 		));
 	}
 
