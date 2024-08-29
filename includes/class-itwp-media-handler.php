@@ -3,50 +3,124 @@
 class ITWP_Media_Handler {
 
 	public static function save_instagram_post( $post, $date_format ) {
-		$post_id = wp_insert_post(array(
-			'post_title' => 'Instagram Post ' . $post['id'],
-			'post_content' => isset($post['caption']) ? $post['caption'] : '',
-			'post_status' => 'publish',
+		$post_id = $post['id'];
+
+		// Check if post already exists
+		$existing_post = get_posts( array(
 			'post_type' => 'instagram_post',
-			'post_date' => date($date_format, strtotime($post['timestamp'])),
-		));
+			'meta_key' => 'instagram_post_id',
+			'meta_value' => $post_id,
+			'posts_per_page' => 1,
+		) );
 
-		if ( $post_id && ! is_wp_error( $post_id ) ) {
-			if ($post['media_type'] == 'IMAGE' || $post['media_type'] == 'CAROUSEL_ALBUM') {
-				self::save_image_to_media_library($post['media_url'], $post_id);
-			} elseif ($post['media_type'] == 'VIDEO') {
-				self::save_video_to_media_library($post['media_url'], $post_id);
+		if ( ! empty( $existing_post ) ) {
+			return;
+		}
+
+		// Initialize variables
+		$post_content = '';
+		$media_id = null;
+
+		try {
+			if ( $post['media_type'] == 'IMAGE' || $post['media_type'] == 'CAROUSEL_ALBUM' ) {
+				$media_url = $post['media_url'];
+				$media_id = self::save_media_to_library( $media_url, $post_id, 'image/jpeg' );
+
+				if ( is_wp_error( $media_id ) ) {
+					throw new Exception( 'Failed to save image to media library.' );
+				}
+
+				// Use the local image URL in the post content without the alt attribute
+				$image_url = wp_get_attachment_url( $media_id );
+				$post_content .= '<img src="' . esc_url( $image_url ) . '" />';
+			} elseif ( $post['media_type'] == 'VIDEO' ) {
+				$media_url = $post['media_url'];
+				$media_id = self::save_media_to_library( $media_url, $post_id, 'video/mp4' );
+
+				if ( is_wp_error( $media_id ) ) {
+					throw new Exception( 'Failed to save video to media library.' );
+				}
+
+				// Embed the video in the post content
+				$video_url = wp_get_attachment_url( $media_id );
+				$post_content .= '<video controls><source src="' . esc_url( $video_url ) . '" type="video/mp4"></video>';
 			}
+
+			// Append the caption text to the post content with nl2br for line breaks
+			if ( !empty( $post['caption'] ) ) {
+				$post_content .= '<p>' . nl2br( esc_html( $post['caption'] ) ) . '</p>';
+			}
+
+			// Create the post in WordPress
+			$new_post_id = wp_insert_post( array(
+				'post_title'    => 'Instagram Post ' . date( $date_format, strtotime( $post['timestamp'] ) ),
+				'post_content'  => $post_content,
+				'post_status'   => 'publish',
+				'post_type'     => 'instagram_post',
+				'meta_input'    => array(
+					'instagram_post_id' => $post_id,
+					'_itwp_fetch_datetime' => current_time( 'mysql' ),
+				),
+			) );
+
+			if ( $media_id ) {
+				// Set the post parent of the attachment to the new post ID
+				wp_update_post( array(
+					'ID' => $media_id,
+					'post_parent' => $new_post_id,
+				) );
+
+				// Set the featured image of the post
+				set_post_thumbnail( $new_post_id, $media_id );
+			}
+
+		} catch ( Exception $e ) {
+			error_log( 'Error saving Instagram post: ' . $e->getMessage() );
 		}
 	}
 
-	public static function save_image_to_media_library( $image_url, $post_id ) {
+	public static function save_media_to_library( $media_url, $post_id, $mime_type ) {
 		$upload_dir = wp_upload_dir();
-		$image_data = file_get_contents( $image_url );
+		$unique_id = uniqid();
+		$filename = $unique_id . '.' . pathinfo( parse_url( $media_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
 
-		if ( $image_data ) {
-			$filename = basename( $image_url );
-			$file = $upload_dir['path'] . '/' . $filename;
-
-			if ( file_put_contents( $file, $image_data ) ) {
-				$wp_filetype = wp_check_filetype( $filename, null );
-				$attachment = array(
-					'post_mime_type' => $wp_filetype['type'],
-					'post_title' => sanitize_file_name( $filename ),
-					'post_content' => '',
-					'post_status' => 'inherit'
-				);
-
-				$attach_id = wp_insert_attachment( $attachment, $file, $post_id );
-				require_once( ABSPATH . 'wp-admin/includes/image.php' );
-				$attach_data = wp_generate_attachment_metadata( $attach_id, $file );
-				wp_update_attachment_metadata( $attach_id, $attach_data );
-				set_post_thumbnail( $post_id, $attach_id );
-			}
+		// Convert to jpg or mp4 if needed
+		$file_extension = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
+		if ( $file_extension !== 'jpg' && $mime_type === 'image/jpeg' ) {
+			$filename = $unique_id . '.jpg';
+		} elseif ( $file_extension !== 'mp4' && $mime_type === 'video/mp4' ) {
+			$filename = $unique_id . '.mp4';
 		}
-	}
 
-	public static function save_video_to_media_library( $video_url, $post_id ) {
-		// Implement video saving logic here
+		$file_path = $upload_dir['path'] . '/' . $filename;
+
+		// Download file to local path
+		$file_content = file_get_contents( $media_url );
+		if ( $file_content === false ) {
+			return new WP_Error( 'download_error', __( 'Failed to download media from Instagram.', 'instagram-to-wordpress-posts' ) );
+		}
+
+		file_put_contents( $file_path, $file_content );
+
+		// Prepare the attachment
+		$attachment = array(
+			'guid'           => $upload_dir['url'] . '/' . basename( $file_path ),
+			'post_mime_type' => $mime_type,
+			'post_title'     => sanitize_file_name( $filename ),
+			'post_content'   => '',
+			'post_status'    => 'inherit',
+		);
+
+		// Insert the attachment into the media library
+		$attachment_id = wp_insert_attachment( $attachment, $file_path, 0 );
+
+		if ( ! function_exists( 'wp_generate_attachment_metadata' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/image.php';
+		}
+
+		$attachment_metadata = wp_generate_attachment_metadata( $attachment_id, $file_path );
+		wp_update_attachment_metadata( $attachment_id, $attachment_metadata );
+
+		return $attachment_id;
 	}
 }
