@@ -44,7 +44,9 @@ jQuery(document).ready(function($) {
                                             }
                                         }
                                     } else {
-                                        alert(res.data.message || 'Error fetching Instagram posts.');
+                                        // Check if res.data exists and contains a message
+                                        var errorMessage = res.data && res.data.message ? res.data.message : 'Error fetching Instagram posts.';
+                                        alert(errorMessage);
                                         $progressBar.hide();
                                     }
                                 },
@@ -57,7 +59,9 @@ jQuery(document).ready(function($) {
 
                         fetchNextBatch();
                     } else {
-                        alert(response.data.message || 'Error starting the fetch process.');
+                        // Check if response.data exists and contains a message
+                        var errorMessage = response.data && response.data.message ? response.data.message : 'Error starting the fetch process.';
+                        alert(errorMessage);
                         $progressBar.hide();
                     }
                 },
