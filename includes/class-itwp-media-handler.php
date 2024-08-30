@@ -3,8 +3,8 @@
 class ITWP_Media_Handler {
 
 	public static function save_instagram_post( $post, $date_format ) {
-		$post_id = $post['id'];
-		$permalink = isset($post['permalink']) ? $post['permalink'] : '';
+		$post_id = sanitize_text_field( $post['id'] );
+		$permalink = isset($post['permalink']) ? esc_url( $post['permalink'] ) : '';
 
 		// Check if post already exists
 		$existing_post = get_posts( array(
@@ -24,7 +24,7 @@ class ITWP_Media_Handler {
 
 		try {
 			if ( $post['media_type'] == 'IMAGE' || $post['media_type'] == 'CAROUSEL_ALBUM' ) {
-				$media_url = $post['media_url'];
+				$media_url = esc_url( $post['media_url'] );
 				$media_id = self::save_media_to_library( $media_url, $post_id, 'image/jpeg' );
 
 				if ( is_wp_error( $media_id ) ) {
@@ -35,7 +35,7 @@ class ITWP_Media_Handler {
 				$image_url = wp_get_attachment_url( $media_id );
 				$post_content .= '<img src="' . esc_url( $image_url ) . '" />';
 			} elseif ( $post['media_type'] == 'VIDEO' ) {
-				$media_url = $post['media_url'];
+				$media_url = esc_url( $post['media_url'] );
 				$media_id = self::save_media_to_library( $media_url, $post_id, 'video/mp4' );
 
 				if ( is_wp_error( $media_id ) ) {
@@ -54,14 +54,14 @@ class ITWP_Media_Handler {
 
 			// Create the post in WordPress
 			$new_post_id = wp_insert_post( array(
-				'post_title'    => 'Instagram Post ' . date( $date_format, strtotime( $post['timestamp'] ) ),
-				'post_content'  => $post_content,
+				'post_title'    => sanitize_text_field( 'Instagram Post ' . date( $date_format, strtotime( $post['timestamp'] ) ) ),
+				'post_content'  => wp_kses_post( $post_content ),
 				'post_status'   => 'publish',
 				'post_type'     => 'instagram_post',
 				'meta_input'    => array(
-					'instagram_post_id' => $post_id,
+					'instagram_post_id' => sanitize_text_field( $post_id ),
 					'_itwp_fetch_datetime' => current_time( 'mysql' ),
-					'instagram_post_permalink' => $permalink, // Save the permalink as a meta field
+					'instagram_post_permalink' => esc_url( $permalink ), // Save the permalink as a meta field
 				),
 			) );
 
@@ -83,7 +83,7 @@ class ITWP_Media_Handler {
 
 		} catch ( Exception $e ) {
 			if (get_option('itwp_debug_mode') === 'on') {
-				echo '<pre>Error saving Instagram post: ' . $e->getMessage() . '</pre>';
+				echo '<pre>Error saving Instagram post: ' . esc_html( $e->getMessage() ) . '</pre>';
 			}
 			error_log( 'Error saving Instagram post: ' . $e->getMessage() );
 		}
@@ -100,14 +100,14 @@ class ITWP_Media_Handler {
 		}
 
 		$unique_id = uniqid();
-		$filename = $post_id . '_' . $unique_id . '.' . pathinfo( parse_url( $media_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+		$filename = sanitize_file_name( $post_id . '_' . $unique_id . '.' . pathinfo( parse_url( $media_url, PHP_URL_PATH ), PATHINFO_EXTENSION ) );
 
 		// Convert to jpg or mp4 if needed
 		$file_extension = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
 		if ( $file_extension !== 'jpg' && $mime_type === 'image/jpeg' ) {
-			$filename = $post_id . '_' . $unique_id . '.jpg';
+			$filename = sanitize_file_name( $post_id . '_' . $unique_id . '.jpg' );
 		} elseif ( $file_extension !== 'mp4' && $mime_type === 'video/mp4' ) {
-			$filename = $post_id . '_' . $unique_id . '.mp4';
+			$filename = sanitize_file_name( $post_id . '_' . $unique_id . '.mp4' );
 		}
 
 		$file_path = $upload_path . '/' . $filename;
@@ -122,7 +122,7 @@ class ITWP_Media_Handler {
 
 		// Prepare the attachment
 		$attachment = array(
-			'guid'           => $upload_dir['url'] . '/' . $subdir . '/' . basename( $file_path ),
+			'guid'           => esc_url( $upload_dir['url'] . '/' . $subdir . '/' . basename( $file_path ) ),
 			'post_mime_type' => $mime_type,
 			'post_title'     => sanitize_file_name( $filename ),
 			'post_content'   => '',
