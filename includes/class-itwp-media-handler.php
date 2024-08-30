@@ -81,6 +81,14 @@ class ITWP_Media_Handler {
 
 	public static function save_media_to_library( $media_url, $post_id, $mime_type ) {
 		$upload_dir = wp_upload_dir();
+		$subdir = 'instagram_posts';
+		$upload_path = $upload_dir['path'] . '/' . $subdir;
+
+		// Create subdirectory if it doesn't exist
+		if ( ! file_exists( $upload_path ) ) {
+			wp_mkdir_p( $upload_path );
+		}
+
 		$unique_id = uniqid();
 		$filename = $unique_id . '.' . pathinfo( parse_url( $media_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
 
@@ -92,7 +100,7 @@ class ITWP_Media_Handler {
 			$filename = $unique_id . '.mp4';
 		}
 
-		$file_path = $upload_dir['path'] . '/' . $filename;
+		$file_path = $upload_path . '/' . $filename;
 
 		// Download file to local path
 		$file_content = file_get_contents( $media_url );
@@ -104,7 +112,7 @@ class ITWP_Media_Handler {
 
 		// Prepare the attachment
 		$attachment = array(
-			'guid'           => $upload_dir['url'] . '/' . basename( $file_path ),
+			'guid'           => $upload_dir['url'] . '/' . $subdir . '/' . basename( $file_path ),
 			'post_mime_type' => $mime_type,
 			'post_title'     => sanitize_file_name( $filename ),
 			'post_content'   => '',

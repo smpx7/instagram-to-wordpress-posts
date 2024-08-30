@@ -101,3 +101,26 @@ function itwp_handle_instagram_auth_callback() {
 	}
 }
 add_action( 'admin_init', 'itwp_handle_instagram_auth_callback' );
+
+// Custom error and exception handler for debugging
+function itwp_custom_error_handler($errno, $errstr, $errfile, $errline) {
+	if (get_option('itwp_debug_mode') === 'on') {
+		echo "<b>Error:</b> [$errno] $errstr - $errfile:$errline";
+		echo "<br />";
+		echo "Terminating PHP Script";
+		die();
+	}
+	return false; // Let the default PHP error handler handle it as well
+}
+
+function itwp_custom_exception_handler($exception) {
+	if (get_option('itwp_debug_mode') === 'on') {
+		echo "<b>Exception:</b> " . $exception->getMessage();
+		die();
+	}
+}
+
+// Set custom error and exception handlers
+set_error_handler("itwp_custom_error_handler");
+set_exception_handler("itwp_custom_exception_handler");
+

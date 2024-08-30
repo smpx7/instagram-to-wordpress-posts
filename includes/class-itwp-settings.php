@@ -11,10 +11,12 @@ class ITWP_Settings {
 		add_option( 'itwp_access_token', '' );
 		add_option( 'itwp_fetch_limit', 10 ); // Default limit
 		add_option( 'itwp_date_format', 'Y-m-d H:i:s' ); // Default date format
+		add_option( 'itwp_debug_mode', 'off' ); // Default debug mode
 
 		register_setting( 'itwp_options_group', 'itwp_access_token', 'sanitize_text_field' );
 		register_setting( 'itwp_options_group', 'itwp_fetch_limit', 'intval' );
 		register_setting( 'itwp_options_group', 'itwp_date_format', 'sanitize_text_field' );
+		register_setting( 'itwp_options_group', 'itwp_debug_mode', 'sanitize_text_field' );
 	}
 
 	public static function register_options_page() {
@@ -23,6 +25,7 @@ class ITWP_Settings {
 
 	public static function options_page() {
 		$access_token = get_option('itwp_access_token');
+		$debug_mode = get_option('itwp_debug_mode');
 		?>
         <div>
             <h2><?php _e( 'Instagram API Settings', 'instagram-to-wordpress-posts' ); ?></h2>
@@ -45,6 +48,15 @@ class ITWP_Settings {
                                 <option value="Y-m-d H:i" <?php selected( get_option('itwp_date_format'), 'Y-m-d H:i' ); ?>><?php echo date('Y-m-d H:i'); ?></option>
                                 <option value="d.m.Y H:i:s" <?php selected( get_option('itwp_date_format'), 'd.m.Y H:i:s' ); ?>><?php echo date('d.m.Y H:i:s'); ?></option>
                                 <option value="d.m.Y H:i" <?php selected( get_option('itwp_date_format'), 'd.m.Y H:i' ); ?>><?php echo date('d.m.Y H:i'); ?></option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr valign="top">
+                        <th scope="row"><label for="itwp_debug_mode"><?php _e( 'Enable Debug Mode', 'instagram-to-wordpress-posts' ); ?></label></th>
+                        <td>
+                            <select id="itwp_debug_mode" name="itwp_debug_mode">
+                                <option value="off" <?php selected( $debug_mode, 'off' ); ?>><?php _e('Off', 'instagram-to-wordpress-posts'); ?></option>
+                                <option value="on" <?php selected( $debug_mode, 'on' ); ?>><?php _e('On', 'instagram-to-wordpress-posts'); ?></option>
                             </select>
                         </td>
                     </tr>
