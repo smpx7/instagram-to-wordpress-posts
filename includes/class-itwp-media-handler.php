@@ -4,6 +4,7 @@ class ITWP_Media_Handler {
 
 	public static function save_instagram_post( $post, $date_format ) {
 		$post_id = $post['id'];
+		$permalink = isset($post['permalink']) ? $post['permalink'] : '';
 
 		// Check if post already exists
 		$existing_post = get_posts( array(
@@ -60,8 +61,14 @@ class ITWP_Media_Handler {
 				'meta_input'    => array(
 					'instagram_post_id' => $post_id,
 					'_itwp_fetch_datetime' => current_time( 'mysql' ),
+					'instagram_post_permalink' => $permalink, // Save the permalink as a meta field
 				),
 			) );
+
+			// Check for wp_insert_post errors
+			if ( is_wp_error( $new_post_id ) ) {
+				throw new Exception( 'Failed to create post in WordPress: ' . $new_post_id->get_error_message() );
+			}
 
 			if ( $media_id ) {
 				// Set the post parent of the attachment to the new post ID
@@ -75,6 +82,9 @@ class ITWP_Media_Handler {
 			}
 
 		} catch ( Exception $e ) {
+			if (get_option('itwp_debug_mode') === 'on') {
+				echo '<pre>Error saving Instagram post: ' . $e->getMessage() . '</pre>';
+			}
 			error_log( 'Error saving Instagram post: ' . $e->getMessage() );
 		}
 	}
@@ -90,14 +100,14 @@ class ITWP_Media_Handler {
 		}
 
 		$unique_id = uniqid();
-		$filename = $unique_id . '.' . pathinfo( parse_url( $media_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
+		$filename = $post_id . '_' . $unique_id . '.' . pathinfo( parse_url( $media_url, PHP_URL_PATH ), PATHINFO_EXTENSION );
 
 		// Convert to jpg or mp4 if needed
 		$file_extension = strtolower( pathinfo( $filename, PATHINFO_EXTENSION ) );
 		if ( $file_extension !== 'jpg' && $mime_type === 'image/jpeg' ) {
-			$filename = $unique_id . '.jpg';
+			$filename = $post_id . '_' . $unique_id . '.jpg';
 		} elseif ( $file_extension !== 'mp4' && $mime_type === 'video/mp4' ) {
-			$filename = $unique_id . '.mp4';
+			$filename = $post_id . '_' . $unique_id . '.mp4';
 		}
 
 		$file_path = $upload_path . '/' . $filename;
