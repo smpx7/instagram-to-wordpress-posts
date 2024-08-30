@@ -19,8 +19,8 @@ class ITWP_Instagram_Fetcher {
 		check_ajax_referer( 'itwp_fetch_nonce', 'security' );
 
 		$access_token = get_option( 'itwp_access_token', '' );
-		$fetch_limit = get_option( 'itwp_fetch_limit', 10 ); // User-defined limit
-		$batch_size = 5; // Set batch size to 10 posts
+		$fetch_limit = get_option( 'itwp_fetch_limit', 30 ); // User-defined limit
+		$batch_size = 15; // Set batch size to 15 posts
 
 		if ( empty( $access_token ) ) {
 			wp_send_json_error( array( 'message' => __( 'Instagram Access Token is missing. Please configure it in the settings page.', 'instagram-to-wordpress-posts' ) ) );

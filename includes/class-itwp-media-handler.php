@@ -6,6 +6,9 @@ class ITWP_Media_Handler {
 		$post_id = $post['id'];
 		$permalink = isset($post['permalink']) ? $post['permalink'] : '';
 
+		// Convert Instagram timestamp to WordPress format
+		$post_date = date('Y-m-d H:i:s', strtotime($post['timestamp']));
+
 		// Check if post already exists
 		$existing_post = get_posts( array(
 			'post_type' => 'instagram_post',
@@ -55,25 +58,27 @@ class ITWP_Media_Handler {
 			// Sanitize the post content
 			$sanitized_content = wp_kses_post( $post_content );
 
+			// Encode emojis in content and title
+			$sanitized_content = wp_encode_emoji( $sanitized_content );
+			$post_title = wp_encode_emoji( 'Instagram Post ' . date( $date_format, strtotime( $post['timestamp'] ) ) );
+
 			// Create the post in WordPress
-			$new_post_id = wp_insert_post(array(
-				'post_title'    => 'Instagram Post ' . date($date_format, strtotime($post['timestamp'])),
+			$new_post_id = wp_insert_post( array(
+				'post_title'    => $post_title,
 				'post_content'  => $sanitized_content,
 				'post_status'   => 'publish',
 				'post_type'     => 'instagram_post',
+				'post_date'     => $post_date, // Use Instagram post date
 				'meta_input'    => array(
 					'instagram_post_id' => $post_id,
-					'_itwp_fetch_datetime' => current_time('mysql'),
+					'_itwp_fetch_datetime' => current_time( 'mysql' ),
 					'instagram_post_permalink' => $permalink, // Save the permalink as a meta field
 				),
-			), true); // Set the second parameter to true to return a WP_Error on failure
+			) );
 
-			if (is_wp_error($new_post_id)) {
-				error_log('Error creating post: ' . $new_post_id->get_error_message());
-				if (get_option('itwp_debug_mode') === 'on') {
-					echo '<pre>Error creating post: ' . esc_html($new_post_id->get_error_message()) . '</pre>';
-				}
-				return; // Exit the function if there's an error
+			// Check for wp_insert_post errors
+			if ( is_wp_error( $new_post_id ) ) {
+				throw new Exception( 'Failed to create post in WordPress: ' . $new_post_id->get_error_message() );
 			}
 
 			if ( $media_id ) {
