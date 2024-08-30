@@ -1,4 +1,5 @@
 <?php
+
 class ITWP_Post_Type {
 	public static function register() {
 		add_action('init', array(__CLASS__, 'register_post_type'));
@@ -29,7 +30,7 @@ class ITWP_Post_Type {
 	public static function add_meta_boxes() {
 		add_meta_box(
 			'itwp_fetch_datetime_meta_box', // Meta box ID
-			__('Fetch Date/Time', 'instagram-to-wordpress-posts'), // Meta box title
+			__('Instagram Post Details', 'instagram-to-wordpress-posts'), // Meta box title
 			array(__CLASS__, 'display_fetch_datetime_meta_box'), // Callback function
 			'instagram_post', // Post type
 			'side', // Context (side, normal, etc.)
@@ -40,16 +41,25 @@ class ITWP_Post_Type {
 	public static function display_fetch_datetime_meta_box($post) {
 		// Retrieve the fetch date/time from the post meta
 		$fetch_datetime = get_post_meta($post->ID, '_itwp_fetch_datetime', true);
+		$instagram_permalink = get_post_meta($post->ID, 'instagram_post_permalink', true);
 
 		echo '<label for="itwp_fetch_datetime">';
 		_e('Date/Time when the post was fetched:', 'instagram-to-wordpress-posts');
 		echo '</label> ';
 		echo '<input type="text" id="itwp_fetch_datetime" name="itwp_fetch_datetime" value="' . esc_attr($fetch_datetime) . '" readonly style="width:100%;" />';
+
+		// Display Instagram post permalink
+		if (!empty($instagram_permalink)) {
+			echo '<br><br><label for="instagram_post_permalink">';
+			_e('Instagram Post Permalink:', 'instagram-to-wordpress-posts');
+			echo '</label> ';
+			echo '<input type="text" id="instagram_post_permalink" name="instagram_post_permalink" value="' . esc_url($instagram_permalink) . '" readonly style="width:100%;" />';
+		}
 	}
 
 	public static function add_fetch_button($post_type) {
 		if ($post_type == 'instagram_post') {
-			echo '<button id="itwp-fetch-btn" class="button button-primary" style="margin: 0 8px 0 0;">' . __('Fetch Instagram Posts Now', 'instagram-to-wordpress-posts') . '</button>';
+			echo '<button id="itwp-fetch-btn" class="button button-primary" style="margin: 5px 0;">' . __('Fetch Instagram Posts Now', 'instagram-to-wordpress-posts') . '</button>';
 			echo '<progress id="itwp-fetch-progress" value="0" max="100" style="width:200px; display:none; margin-left: 10px;"></progress>';
 		}
 	}
