@@ -56,21 +56,24 @@ class ITWP_Media_Handler {
 			$sanitized_content = wp_kses_post( $post_content );
 
 			// Create the post in WordPress
-			$new_post_id = wp_insert_post( array(
-				'post_title'    => 'Instagram Post ' . date( $date_format, strtotime( $post['timestamp'] ) ),
+			$new_post_id = wp_insert_post(array(
+				'post_title'    => 'Instagram Post ' . date($date_format, strtotime($post['timestamp'])),
 				'post_content'  => $sanitized_content,
 				'post_status'   => 'publish',
 				'post_type'     => 'instagram_post',
 				'meta_input'    => array(
 					'instagram_post_id' => $post_id,
-					'_itwp_fetch_datetime' => current_time( 'mysql' ),
+					'_itwp_fetch_datetime' => current_time('mysql'),
 					'instagram_post_permalink' => $permalink, // Save the permalink as a meta field
 				),
-			) );
+			), true); // Set the second parameter to true to return a WP_Error on failure
 
-			// Check for wp_insert_post errors
-			if ( is_wp_error( $new_post_id ) ) {
-				throw new Exception( 'Failed to create post in WordPress: ' . $new_post_id->get_error_message() );
+			if (is_wp_error($new_post_id)) {
+				error_log('Error creating post: ' . $new_post_id->get_error_message());
+				if (get_option('itwp_debug_mode') === 'on') {
+					echo '<pre>Error creating post: ' . esc_html($new_post_id->get_error_message()) . '</pre>';
+				}
+				return; // Exit the function if there's an error
 			}
 
 			if ( $media_id ) {
