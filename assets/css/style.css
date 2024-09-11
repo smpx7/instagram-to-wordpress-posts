@@ -1,0 +1,28 @@
+.instagram-posts-wrapper .instagram-post .post-content {
+    border-top: 5px solid #d7db35;
+    background-image: linear-gradient(25deg, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.6) 100%);
+    color: #fff;
+    font-size: 16px;
+}
+
+.instagram-posts-wrapper .instagram-post .post-content p {
+    line-height: 1.75;
+}
+
+.instagram-posts-wrapper .instagram-post .post-content img.img-responsive {
+    max-width: 100%;
+    height: auto;
+}
+.instagram-posts-wrapper .instagram-post .post-attachments {
+    position: relative;
+}
+.instagram-posts-wrapper .instagram-post .post-attachments .multiple_images {
+    position: absolute;
+    bottom:15px;
+    right: 15px;
+    background-image: url("../images/multiple-images.svg");
+    background-size: contain;
+    background-repeat: no-repeat;
+    width: 30px;
+    height: 30px;
+}

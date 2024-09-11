@@ -19,8 +19,8 @@ class ITWP_Instagram_Fetcher {
 		check_ajax_referer( 'itwp_fetch_nonce', 'security' );
 
 		$access_token = get_option( 'itwp_access_token', '' );
-		$fetch_limit = get_option( 'itwp_fetch_limit', 30 ); // User-defined limit
-		$batch_size = 15; // Set batch size to 15 posts
+		$fetch_limit  = get_option( 'itwp_fetch_limit', 30 ); // User-defined limit
+		$batch_size   = 15; // Set batch size to 15 posts
 
 		if ( empty( $access_token ) ) {
 			wp_send_json_error( array( 'message' => __( 'Instagram Access Token is missing. Please configure it in the settings page.', 'instagram-to-wordpress-posts' ) ) );
@@ -29,9 +29,9 @@ class ITWP_Instagram_Fetcher {
 		// Initialize fetch and error handling
 		try {
 			// Initialize or reset session variables at the start of each fetch run
-			$_SESSION['itwp_total_posts'] = min($fetch_limit, 200); // Instagram API might limit the number, so cap at 200
+			$_SESSION['itwp_total_posts']   = min( $fetch_limit, 200 ); // Instagram API might limit the number, so cap at 200
 			$_SESSION['itwp_fetched_posts'] = 0; // Reset fetched count
-			$_SESSION['itwp_batch_size'] = $batch_size; // Set batch size for each fetch
+			$_SESSION['itwp_batch_size']    = $batch_size; // Set batch size for each fetch
 
 			wp_send_json_success( array( 'total' => $_SESSION['itwp_total_posts'] ) );
 		} catch ( Exception $e ) {
@@ -44,7 +44,7 @@ class ITWP_Instagram_Fetcher {
 		check_ajax_referer( 'itwp_fetch_nonce', 'security' );
 
 		$access_token = get_option( 'itwp_access_token', '' );
-		$batch_size = $_SESSION['itwp_batch_size']; // Fetch batch size from session
+		$batch_size   = $_SESSION['itwp_batch_size']; // Fetch batch size from session
 
 		if ( empty( $access_token ) ) {
 			wp_send_json_error( array( 'message' => __( 'Instagram Access Token is missing. Please configure it in the settings page.', 'instagram-to-wordpress-posts' ) ) );
@@ -52,12 +52,12 @@ class ITWP_Instagram_Fetcher {
 
 		// Calculate the remaining posts to fetch
 		$remaining_posts = $_SESSION['itwp_total_posts'] - $_SESSION['itwp_fetched_posts'];
-		$fetch_limit = min($batch_size, $remaining_posts); // Fetch up to 10 posts or remaining posts
+		$fetch_limit     = min( $batch_size, $remaining_posts ); // Fetch up to 10 posts or remaining posts
 
 		// Fetch next batch and handle potential errors
 		try {
 			// Use the constant for the API URL and set limit to fetch limit
-			$api_url = ITWP_API_URL . '?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=' . $fetch_limit . '&access_token=' . esc_attr( $access_token );
+			$api_url = ITWP_API_URL . '?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_url,thumbnail_url}&limit=' . $fetch_limit . '&access_token=' . esc_attr( $access_token );
 
 			// Fetch the latest posts in reverse chronological order
 			$response = wp_remote_get( $api_url );
@@ -81,7 +81,9 @@ class ITWP_Instagram_Fetcher {
 				// Update session variable
 				$_SESSION['itwp_fetched_posts'] += count( $data['data'] );
 
-				wp_send_json_success( array( 'fetched' => $_SESSION['itwp_fetched_posts'], 'remaining' => $_SESSION['itwp_total_posts'] - $_SESSION['itwp_fetched_posts'] ) );
+				wp_send_json_success( array( 'fetched'   => $_SESSION['itwp_fetched_posts'],
+				                             'remaining' => $_SESSION['itwp_total_posts'] - $_SESSION['itwp_fetched_posts']
+				) );
 			} else {
 				throw new Exception( 'No data received from Instagram API.' );
 			}

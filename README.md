@@ -1,4 +1,4 @@
-=== Instagram to WordPress Posts ===
+=== Instagram to WordPress Posts === 
 Contributors: Sven Grün
 Tags: Instagram, posts, media
 Requires at least: 5.0
@@ -18,7 +18,3 @@ This plugin allows you to fetch Instagram posts and store them as a custom post 
 3. Use the Settings->Instagram API screen to configure the plugin.
 
 == Changelog ==
-
-= 1.6 =
-* Added client secret field to the settings page.
-* Improved error handling.
