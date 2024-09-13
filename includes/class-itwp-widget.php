@@ -1,7 +1,7 @@
 <?php
 function itwp_widget_styles() {
 	wp_enqueue_style( 'itwp-widget-style', plugins_url( '/../assets/css/style.css', __FILE__ ) );
-	wp_enqueue_script( 'chaos-modal-script', plugins_url( '/../assets/vendor/chaos-modal/jquery.modal.js', __FILE__ ), array( 'jquery' ), '1.0.0', true );
+	wp_enqueue_script( 'chaos-modal-script', plugins_url( '/../assets/vendor/chaos-modal/jquery.modal.min.js', __FILE__ ), array( 'jquery' ), '1.0.0', true );
 }
 
 add_action( 'wp_enqueue_scripts', 'itwp_widget_styles' );
