@@ -30,13 +30,13 @@ $color_lwp: #d7db35;
 
       .itwp_image_video {
         position: absolute;
-        bottom: 15px;
-        right: 15px;
+        top: calc(50% - 30px);
+        left: calc(50% - 30px);
         background-image: url("../images/video.svg");
         background-size: contain;
         background-repeat: no-repeat;
-        width: 30px;
-        height: 30px;
+        width: 60px;
+        height: 60px;
         opacity: .75;
       }
 
