@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.8.1
+ * Version: 1.8.2
  * Author: Sven Grün
  * Text Domain: instagram-to-wordpress-posts
  * Domain Path: /languages
