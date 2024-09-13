@@ -17,6 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define a constant for the Instagram Basic Display API URL
 define( 'ITWP_API_URL', 'https://graph.instagram.com/me/media' );
+define( 'ITWP_VERSION', '1.8.2' );
 
 // Start session if not already started
 function itwp_start_session() {
