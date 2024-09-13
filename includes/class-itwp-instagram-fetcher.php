@@ -57,7 +57,7 @@ class ITWP_Instagram_Fetcher {
 		// Fetch next batch and handle potential errors
 		try {
 			// Use the constant for the API URL and set limit to fetch limit
-			$api_url = ITWP_API_URL . '?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{media_url,thumbnail_url}&limit=' . $fetch_limit . '&access_token=' . esc_attr( $access_token );
+			$api_url = ITWP_API_URL . '?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,children{id,media_url,media_type,thumbnail_url}&limit=' . $fetch_limit . '&access_token=' . esc_attr( $access_token );
 
 			// Fetch the latest posts in reverse chronological order
 			$response = wp_remote_get( $api_url );
@@ -76,10 +76,11 @@ class ITWP_Instagram_Fetcher {
 			if ( ! empty( $data['data'] ) ) {
 				foreach ( $data['data'] as $post ) {
 					ITWP_Media_Handler::save_instagram_post( $post, get_option( 'itwp_date_format', 'Y-m-d H:i:s' ) );
+					$_SESSION['itwp_fetched_posts'] ++;
 				}
 
 				// Update session variable
-				$_SESSION['itwp_fetched_posts'] += count( $data['data'] );
+				//$_SESSION['itwp_fetched_posts'] += count( $data['data'] );
 
 				wp_send_json_success( array( 'fetched'   => $_SESSION['itwp_fetched_posts'],
 				                             'remaining' => $_SESSION['itwp_total_posts'] - $_SESSION['itwp_fetched_posts']

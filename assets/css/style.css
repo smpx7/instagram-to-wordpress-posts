@@ -16,7 +16,18 @@
 .instagram-posts-wrapper .instagram-post .post-attachments {
     position: relative;
 }
-.instagram-posts-wrapper .instagram-post .post-attachments .multiple_images {
+.instagram-posts-wrapper .instagram-post .post-attachments .itwp_image_video {
+    position: absolute;
+    bottom: 15px;
+    right: 15px;
+    background-image: url("../images/video.svg");
+    background-size: contain;
+    background-repeat: no-repeat;
+    width: 30px;
+    height: 30px;
+    opacity: .75    ;
+}
+.instagram-posts-wrapper .instagram-post .post-attachments .itwp_images {
     position: absolute;
     bottom:15px;
     right: 15px;
@@ -25,4 +36,5 @@
     background-repeat: no-repeat;
     width: 30px;
     height: 30px;
+    opacity: .75
 }

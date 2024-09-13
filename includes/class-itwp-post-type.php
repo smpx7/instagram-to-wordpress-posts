@@ -1,6 +1,9 @@
 <?php
 
 class ITWP_Post_Type {
+
+	const POST_TYPE = 'instagram_post';
+
 	/**
 	 *
 	 */
@@ -11,7 +14,7 @@ class ITWP_Post_Type {
 			__CLASS__,
 			'add_fetch_button'
 		) ); // Hook into restrict_manage_posts
-
+		add_action( 'before_delete_post', array( __CLASS__, 'delete_attachments_with_post' ) );
 		add_shortcode( 'itwp_instagram_posts', array( __CLASS__, 'display_instagram_posts_shortcode' ) );
 	}
 
@@ -19,7 +22,7 @@ class ITWP_Post_Type {
 	 * Register the custom post type for Instagram posts
 	 */
 	public static function register_post_type() {
-		register_post_type( 'instagram_post', array(
+		register_post_type( self::POST_TYPE, array(
 			'labels'            => array(
 				'name'          => __( 'Instagram Posts', 'instagram-to-wordpress-posts' ),
 				'singular_name' => __( 'Instagram Post', 'instagram-to-wordpress-posts' ),
@@ -38,12 +41,33 @@ class ITWP_Post_Type {
 		) );
 	}
 
+	public static function delete_attachments_with_post( $post_id ) {
+		// Check if it's the correct custom post type
+		$post_type = get_post_type( $post_id );
+
+		// Replace 'your_custom_post_type' with the actual name of your custom post type
+		if ( $post_type === self::POST_TYPE ) {
+			// Get all attachments for the post
+			$attachments = get_children( array(
+				'post_parent' => $post_id,
+				'post_type'   => 'attachment'
+			) );
+
+			// If attachments are found, delete them
+			if ( ! empty( $attachments ) ) {
+				foreach ( $attachments as $attachment_id => $attachment ) {
+					wp_delete_attachment( $attachment_id, true ); // true for force delete
+				}
+			}
+		}
+	}
+
 	public static function add_meta_boxes() {
 		add_meta_box(
 			'itwp_fetch_datetime_meta_box', // Meta box ID
 			__( 'Instagram Post Details', 'instagram-to-wordpress-posts' ), // Meta box title
 			array( __CLASS__, 'display_fetch_datetime_meta_box' ), // Callback function
-			'instagram_post', // Post type
+			self::POST_TYPE, // Post type
 			'side', // Context (side, normal, etc.)
 			'default' // Priority
 		);
@@ -89,7 +113,7 @@ class ITWP_Post_Type {
 	 * @param string $post_type
 	 */
 	public static function add_fetch_button( $post_type ) {
-		if ( $post_type == 'instagram_post' ) {
+		if ( $post_type == self::POST_TYPE ) {
 			echo '<button id="itwp-fetch-btn" class="button button-primary" style="margin: 0 8px 0 0;">' . __( 'Fetch Instagram Posts Now', 'instagram-to-wordpress-posts' ) . '</button>';
 			echo '<progress id="itwp-fetch-progress" value="0" max="100" style="width:200px; display:none; margin-left: 10px;"></progress>';
 		}
@@ -114,7 +138,7 @@ class ITWP_Post_Type {
 		), $atts, 'itwp_instagram_posts' );
 
 		$args = array(
-			'post_type'      => 'instagram_post',
+			'post_type'      => self::POST_TYPE,
 			'posts_per_page' => intval( $atts['limit'] ),
 			'post_status'    => 'publish',
 			'order'          => 'DESC',
