@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Instagram to WordPress Posts
  * Description: A plugin to fetch Instagram posts using the Instagram Basic Display API, store them as a custom post type, and provide a settings page.
- * Version: 1.8.4
+ * Version: 1.9.0
  * Author: Sven Grün
  * Text Domain: instagram-to-wordpress-posts
  * Domain Path: /languages
@@ -17,7 +17,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // Define a constant for the Instagram Basic Display API URL
 define( 'ITWP_API_URL', 'https://graph.instagram.com/me/media' );
-define( 'ITWP_VERSION', '1.8.4' );
+define( 'ITWP_VERSION', '1.9.0' );
 
 // Start session if not already started
 function itwp_start_session() {
