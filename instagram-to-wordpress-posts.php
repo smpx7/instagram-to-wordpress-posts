@@ -62,7 +62,7 @@ ITWP_Settings::register();
 ITWP_Instagram_Fetcher::register();
 
 // Handle Instagram Authorization Callback
-function itwp_handle_instagram_auth_callback() {
+/*function itwp_handle_instagram_auth_callback() {
 	if ( isset( $_GET['code'] ) ) {
 		$code          = sanitize_text_field( $_GET['code'] );
 		$client_id     = get_option( 'itwp_client_id' );  // Fetch stored Client ID
@@ -76,6 +76,42 @@ function itwp_handle_instagram_auth_callback() {
 		}
 
 		// Exchange the code for an access token
+		$response = wp_remote_post( 'https://api.instagram.com/oauth/access_token', array(
+			'body' => array(
+				'client_id'     => $client_id,
+				'client_secret' => $client_secret,
+				'grant_type'    => 'authorization_code',
+				'redirect_uri'  => $redirect_uri,
+				'code'          => $code
+			)
+		) );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( 'Instagram to WordPress Posts Error: Failed to get access token. ' . $response->get_error_message() );
+
+			return;
+		}
+
+		$body = wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
+
+		if ( isset( $data['access_token'] ) ) {
+			update_option( 'itwp_access_token', sanitize_text_field( $data['access_token'] ) );
+			add_action( 'admin_notices', function () {
+				echo '<div class="notice notice-success is-dismissible"><p>' . __( 'Successfully authorized with Instagram.', 'instagram-to-wordpress-posts' ) . '</p></div>';
+			} );
+		} else {
+			error_log( 'Instagram to WordPress Posts Error: Failed to retrieve access token from Instagram.' );
+		}
+	}
+}*/
+function itwp_handle_instagram_auth_callback() {
+	if ( isset( $_GET['code'] ) ) {
+		$code          = sanitize_text_field( $_GET['code'] );
+		$client_id     = get_option( 'itwp_client_id' );
+		$client_secret = get_option( 'itwp_client_secret' );
+		$redirect_uri  = admin_url( 'admin.php?page=itwp' );
+
 		$response = wp_remote_post( 'https://api.instagram.com/oauth/access_token', array(
 			'body' => array(
 				'client_id'     => $client_id,
@@ -126,6 +162,16 @@ function itwp_custom_exception_handler( $exception ) {
 		die();
 	}
 }
+
+function itwp_get_instagram_login_url() {
+	$client_id    = get_option( 'itwp_client_id' );
+	$redirect_uri = admin_url( 'admin.php?page=itwp' );
+	$scope        = 'user_profile,user_media';
+	$auth_url     = "https://api.instagram.com/oauth/authorize?client_id={$client_id}&redirect_uri={$redirect_uri}&scope={$scope}&response_type=code";
+
+	return $auth_url;
+}
+
 
 // Set custom error and exception handlers
 set_error_handler( "itwp_custom_error_handler" );

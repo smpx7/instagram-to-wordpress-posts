@@ -63,6 +63,8 @@ class ITWP_Settings {
                 </table>
 				<?php submit_button(); ?>
             </form>
+            <!-- Instagram Authentication Button -->
+            <a href="<?php echo esc_url( itwp_get_instagram_login_url() ); ?>" class="button button-primary"><?php esc_html_e( 'Authenticate with Instagram', 'instagram-to-wordpress-posts' ); ?></a>
 
             <!-- Manual Fetch Button -->
             <button id="itwp-fetch-btn" class="button button-primary"><?php _e( 'Fetch Instagram Posts Now', 'instagram-to-wordpress-posts' ); ?></button>

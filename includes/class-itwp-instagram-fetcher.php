@@ -15,6 +15,38 @@ class ITWP_Instagram_Fetcher {
 		}
 	}
 
+	/**
+	 * Fetches the latest Instagram posts daily using wp-cron and stores them as WordPress posts.
+	 */
+	public static function fetch_and_store_instagram_posts() {
+		$access_token = get_option( 'itwp_access_token' );
+		if ( ! $access_token ) {
+			error_log( 'Instagram to WordPress Posts Error: Access token is missing.' );
+			return;
+		}
+
+		$response = wp_remote_get( ITWP_API_URL . "?fields=id,caption,media_type,media_url,permalink,thumbnail_url,timestamp&access_token={$access_token}" );
+
+		if ( is_wp_error( $response ) ) {
+			error_log( 'Instagram to WordPress Posts Error: Failed to fetch latest posts. ' . $response->get_error_message() );
+			return;
+		}
+
+		$body = wp_remote_retrieve_body( $response );
+		$data = json_decode( $body, true );
+
+		if ( isset( $data['data'] ) ) {
+			foreach ( $data['data'] as $post ) {
+				ITWP_Media_Handler::save_instagram_post( $post, get_option( 'itwp_date_format', 'Y-m-d H:i:s' ) );
+			}
+		} else {
+			error_log( 'Instagram to WordPress Posts Error: Failed to retrieve posts from Instagram.' );
+		}
+	}
+
+	/**
+	 * Initiates the manual fetch process by initializing the session variables.
+	 */
 	public static function ajax_start_fetch() {
 		check_ajax_referer( 'itwp_fetch_nonce', 'security' );
 
@@ -40,6 +72,9 @@ class ITWP_Instagram_Fetcher {
 		}
 	}
 
+	/**
+	 * Fetches the next batch of Instagram posts and stores them as WordPress posts.
+	 */
 	public static function ajax_fetch_next_batch() {
 		check_ajax_referer( 'itwp_fetch_nonce', 'security' );
 
@@ -82,8 +117,9 @@ class ITWP_Instagram_Fetcher {
 				// Update session variable
 				//$_SESSION['itwp_fetched_posts'] += count( $data['data'] );
 
-				wp_send_json_success( array( 'fetched'   => $_SESSION['itwp_fetched_posts'],
-				                             'remaining' => $_SESSION['itwp_total_posts'] - $_SESSION['itwp_fetched_posts']
+				wp_send_json_success( array(
+					'fetched'   => $_SESSION['itwp_fetched_posts'],
+					'remaining' => $_SESSION['itwp_total_posts'] - $_SESSION['itwp_fetched_posts']
 				) );
 			} else {
 				throw new Exception( 'No data received from Instagram API.' );
