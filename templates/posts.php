@@ -6,9 +6,9 @@
                     <div class="post-content p-4">
 						<?php if ( $atts['position'] === 'below' ) : ?>
 							<?php include( plugin_dir_path( __FILE__ ) . 'attachments.php' ); ?>
-                            <p><?php echo nl2br( get_the_content() ); ?></p>
+                            <p><?php echo get_the_content(); ?></p>
 						<?php else: ?>
-                            <p><?php echo nl2br( get_the_content() ); ?></p>
+                            <p><?php echo get_the_content(); ?></p>
 							<?php include( plugin_dir_path( __FILE__ ) . 'attachments.php' ); ?>
 						<?php endif; ?>
                     </div>
